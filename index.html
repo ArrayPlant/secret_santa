@@ -63,6 +63,7 @@ body{
   color:var(--text);
   background: radial-gradient(1200px 700px at 20% -10%, #1b355f 0%, transparent 70%) , radial-gradient(900px 600px at 120% 0%, #0f2244 0%, transparent 60%), linear-gradient(180deg, var(--bg1), var(--bg2));
   overflow-x:hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Snow */
@@ -111,6 +112,7 @@ input[type="number"], input[type="text"], textarea, button, .btn{
   box-shadow: inset 0 0 0 1px #00000020;
   font-size: var(--in-fs);
   line-height: var(--in-lh);
+  touch-action: manipulation;
 }
 input[type="text"]::placeholder{color:#9db5d5}
 input[type="number"]:focus, input[type="text"]:focus, textarea:focus{
@@ -203,8 +205,8 @@ input[type="number"]:focus, input[type="text"]:focus, textarea:focus{
 @media (max-width:980px){ .cards{ grid-template-columns: repeat(2, minmax(220px,1fr)) } }
 @media (max-width:660px){ .cards{ grid-template-columns: 1fr } }
 
-.card{ perspective: 1000px; }
-.flip{ position:relative; width:100%; height:160px; transform-style:preserve-3d; transition: transform .7s cubic-bezier(.2,.8,.2,1); }
+.card{ perspective: 1000px; content-visibility:auto; contain-intrinsic-size: 160px 100%; }
+.flip{ position:relative; width:100%; height:160px; transform-style:preserve-3d; transition: transform .7s cubic-bezier(.2,.8,.2,1); will-change: transform; }
 .card.revealed .flip{ transform: rotateY(180deg) }
 
 .face{
@@ -213,7 +215,7 @@ input[type="number"]:focus, input[type="text"]:focus, textarea:focus{
   backface-visibility: hidden; border:1px solid #ffffff14;
   box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px #ffffff0f;
 }
-.front{ background: linear_gradient(180deg, #11223f, #0d1b34); }
+.front{ background: linear-gradient(180deg, #11223f, #0d1b34); }
 .back{ background: linear-gradient(180deg, #142a52, #102243); transform: rotateY(180deg); }
 .name{ font-size:18px; font-weight:800; text-align:center; }
 .hint{ font-size:12px; opacity:.85; text-align:center; }
@@ -229,6 +231,25 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
 .bulb:nth-child(3n+3){ color:#7bd3ff; animation-delay:1.2s }
 @keyframes twinkle{ 0%,100%{ filter:brightness(1) } 50%{ filter:brightness(1.8) } }
 .divider{ height:1px; background: linear-gradient(90deg, transparent, #ffffff2a, transparent); margin:16px 0; }
+
+/* ===== Мобильные оптимизации ===== */
+@media (max-width: 720px){
+  /* уменьшаем тени и слойность — дешевле рендериться */
+  .panel{ box-shadow:none; }
+  .face{ box-shadow:none; }
+  .btn, #makeInputs{ box-shadow:none; }
+  .badge{ box-shadow:none; }
+  .callout{ box-shadow:none; }
+  /* упрощаем гирлянду */
+  .bulb{ box-shadow: 0 0 10px currentColor; animation-duration: 4s; }
+}
+
+/* Если пользователь просит меньше анимаций — отключаем почти всё */
+@media (prefers-reduced-motion: reduce){
+  .flake{ animation: none; }
+  .bulb{ animation: none; }
+  .flip{ transition: none; }
+}
 </style>
 </head>
 <body>
@@ -238,7 +259,8 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
 <div class="wrap">
   <header>
     <div class="badge">ТАЙНЫЙ САНТА</div>
-    <div class="sub">Вводите имена, а каждый узнает своего получателя только для себя ✨</div>
+    <!-- h1 удалён по просьбе пользователя -->
+    <div class="sub">Вводите имена, раздавайте пары, а каждый узнает своего получателя только для себя ✨</div>
   </header>
 
   <div class="panel">
@@ -255,10 +277,7 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
             <label for="count">Сколько людей участвует?</label>
             <input id="count" type="number" min="3" max="200" value="6" />
           </div>
-
-          <!-- Пустой label создаёт такой же верхний отступ, как у поля слева -->
           <div style="max-width:220px">
-            <label class="spacer-label">Сколько людей участвует?</label>
             <button id="makeInputs" class="btn alt" title="Создать поля для имён">Создать список</button>
           </div>
         </div>
@@ -272,6 +291,7 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
         <div class="names" id="namesList" aria-live="polite"></div>
         <div class="row" style="margin-top:12px">
           <button id="fillExamples" class="btn ghost" type="button">Заполнить именами банды</button>
+          <!-- Убрали отдельную кнопку добавления, теперь она как элемент списка -->
           <button id="generate" class="btn" type="button">Сгенерировать жеребьёвку</button>
           <button id="reset" class="btn ghost" type="button">Сбросить</button>
         </div>
@@ -283,7 +303,8 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
       <div class="col-12">
         <label><span class="highlight">Каждый открывает свою карточку</span></label>
         <div id="results" class="cards" aria-live="polite"></div>
-        <div id="afterInfo" class="tiny" style="margin-top:8px" hidden></div>
+        <div id="afterInfo" class="tiny" style="margin-top:8px" hidden>
+        </div>
       </div>
     </div>
   </div>
@@ -294,22 +315,42 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
 </div>
 
 <script>
-  // --- Snow generator ---
+  // --- Snow generator (мобильная оптимизация) ---
   (function snow(){
     const root = document.getElementById('snow');
-    const FLAKES = 80;
-    for (let i=0;i<FLAKES;i++){
-      const f = document.createElement('div');
-      f.className = 'flake';
-      const size = 4 + Math.random()*6;
-      f.style.width = f.style.height = size + 'px';
-      f.style.left = Math.random()*100 + 'vw';
-      const dur = 8 + Math.random()*8;
-      f.style.animationDuration = dur + 's, ' + (3 + Math.random()*4) + 's';
-      f.style.animationDelay = (-Math.random()*dur) + 's, ' + (Math.random()*2) + 's';
-      f.style.opacity = 0.5 + Math.random()*0.5;
-      root.appendChild(f);
+
+    // Подбираем количество снежинок под устройство и экран
+    const isSmall = window.matchMedia('(max-width: 720px)').matches;
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    const perfCoef = Math.min(cores/4, mem/4); // ~1 на средних устройствах
+
+    const BASE = isSmall ? 24 : 60; // было 80
+    const FLAKES = Math.max(10, Math.round(BASE * perfCoef));
+
+    // Чанкуем создание, чтобы не блокировать main thread
+    let created = 0;
+    const batch = 8;
+    function spawnBatch(){
+      const upTo = Math.min(created + batch, FLAKES);
+      for (let i=created; i<upTo; i++){
+        const f = document.createElement('div');
+        f.className = 'flake';
+        const size = 4 + Math.random()*6;
+        f.style.width = f.style.height = size + 'px';
+        f.style.left = Math.random()*100 + 'vw';
+        const dur = 10 + Math.random()*10; // немного медленнее
+        f.style.animationDuration = dur + 's, ' + (3 + Math.random()*4) + 's';
+        f.style.animationDelay = (-Math.random()*dur) + 's, ' + (Math.random()*2) + 's';
+        f.style.opacity = 0.45 + Math.random()*0.45;
+        root.appendChild(f);
+      }
+      created = upTo;
+      if (created < FLAKES){
+        (window.requestIdleCallback||window.requestAnimationFrame)(spawnBatch);
+      }
     }
+    spawnBatch();
   })();
 
   const count = document.getElementById('count');
@@ -343,7 +384,7 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
       tile.type = 'button';
       tile.className = 'add-tile';
       tile.textContent = 'Добавить участника';
-      tile.addEventListener('click', addOne);
+      tile.addEventListener('click', addOne, {passive:true});
       tile.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); addOne(); }});
     }
     namesList.appendChild(tile);
@@ -395,10 +436,14 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
     afterInfo.hidden = false;
 
     const entries = Array.from(pairs.entries());
+    // рандомизация порядка — Fisher–Yates
     for (let i=entries.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [entries[i], entries[j]] = [entries[j], entries[i]];
     }
+
+    // Фрагмент для минимизации перерисовок
+    const frag = document.createDocumentFragment();
 
     for (const [giver, receiver] of entries){
       const card = document.createElement('div'); 
@@ -429,7 +474,7 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
       showBtn.addEventListener('click', ()=>{
         if (card.dataset.locked === '1') return;
         card.classList.add('revealed');
-      });
+      }, {passive:true});
 
       hideBtn.addEventListener('click', ()=>{
         card.classList.remove('revealed');
@@ -439,14 +484,15 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
         <div class="name">🎅 ${escapeHTML(giver)}</div>
         <div class="hint">Уже просмотрено 🔒</div>
       `;
-      });
+      }, {passive:true});
 
       flip.appendChild(front);
       flip.appendChild(back);
       card.appendChild(flip);
-      results.appendChild(card);
+      frag.appendChild(card);
     }
 
+    results.appendChild(frag);
     results.scrollIntoView({behavior:'smooth', block:'start'});
   }
 
@@ -479,7 +525,7 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
     count.value = n;
     renderNameInputs(n);
     namesWarn.hidden = true; results.innerHTML = ''; afterInfo.hidden = true;
-  });
+  }, {passive:true});
 
   fillExamples.addEventListener('click', ()=>{
     const samples = ["Анна","Альбина","Валерия","Елена","Владислав","Арсений","Владимир"];
@@ -490,11 +536,11 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
     results.innerHTML = '';
     afterInfo.hidden = true;
     namesWarn.hidden = true;
-  });
+  }, {passive:true});
 
   resetBtn.addEventListener('click', ()=>{
     results.innerHTML = ''; afterInfo.hidden = true; namesWarn.hidden = true; namesList.innerHTML = ''; count.value = 6; renderNameInputs(parseInt(count.value,10));
-  });
+  }, {passive:true});
 
   generateBtn.addEventListener('click', ()=>{
     const names = getCleanNames();
@@ -505,7 +551,7 @@ footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
     namesWarn.hidden = true;
     const pairs = derangement(names);
     renderResults(pairs);
-  });
+  }, {passive:true});
 
   // init
   renderNameInputs(parseInt(count.value,10));
