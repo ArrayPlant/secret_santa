@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Тайный Санта</title>
+<style>
+/* вид заблокированной карточки после просмотра */
+.card.locked .front { 
+  filter: grayscale(.15) brightness(.95);
+}
+.card.locked .front .hint{
+  color: var(--gold);
+  font-weight: 900;
+  text-shadow: 0 0 14px rgba(255,209,102,.25);
+}
+
+/* ВАЖНО: акцент над результатами */
+.callout{
+  display:flex; align-items:center; gap:12px;
+  padding:12px 14px; border-radius:14px;
+  background: linear-gradient(180deg, #142a52, #0f1f3e);
+  border:1px solid #ffd16666;
+  box-shadow: 0 10px 30px rgba(255,209,102,.18), inset 0 0 0 1px #ffffff10;
+  position:relative;
+}
+.callout .icon{
+  font-size:20px; line-height:1;
+  filter: drop-shadow(0 0 10px rgba(255,209,102,.3));
+  animation: jingle 2.2s infinite ease-in-out;
+}
+@keyframes jingle { 0%,100%{ transform:rotate(0) } 50%{ transform:rotate(8deg) } }
+
+.highlight{
+  font-weight:900; color:#ffd166;
+  text-shadow: 0 0 18px rgba(255,209,102,.25);
+  border-bottom: 2px dotted rgba(255,209,102,.7);
+  padding-bottom:2px;
+}
+
+:root{
+  --bg1:#0b1526;
+  --bg2:#162a4a;
+  --accent:#ff3d57;
+  --accent-2:#2ee6a6;
+  --gold:#ffd166;
+  --card:#0f1e36cc;
+  --card-2:#112544cc;
+  --text:#eaf4ff;
+
+  /* единые параметры для полей и плитки добавления */
+  --in-fs: 16px;
+  --in-lh: 1.2;
+  --in-pv: 12px;
+  --in-ph: 14px;
+  --in-height: calc(var(--in-fs)*var(--in-lh) + var(--in-pv)*2);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  color:var(--text);
+  background: radial-gradient(1200px 700px at 20% -10%, #1b355f 0%, transparent 70%) , radial-gradient(900px 600px at 120% 0%, #0f2244 0%, transparent 60%), linear-gradient(180deg, var(--bg1), var(--bg2));
+  overflow-x:hidden;
+}
+
+/* Snow */
+.snow{ pointer-events:none; position:fixed; inset:0; z-index:0; overflow:hidden; }
+.flake{
+  position:absolute; top:-10px; width:8px; height:8px; border-radius:50%;
+  background:rgba(255,255,255,.85);
+  filter:drop-shadow(0 0 6px rgba(255,255,255,.6));
+  animation-name: fall, sway; animation-iteration-count: infinite; animation-timing-function: linear;
+}
+@keyframes fall { to { transform: translateY(110vh) } }
+@keyframes sway { 0%{margin-left:-10px} 50%{margin-left:10px} 100%{margin-left:-10px} }
+
+.wrap{ position:relative; z-index:1; max-width:980px; margin:0 auto; padding:28px 16px 64px; }
+header{ display:flex; align-items:center; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:22px; text-align:center; }
+
+/* Updated badge */
+.badge{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 16px; border-radius:999px;
+  background: linear-gradient(90deg, #ff3d57, #ff7a8c);
+  color:#ffffff;
+  font-weight:900; letter-spacing:.6px; text-transform:uppercase; font-size:13px;
+  box-shadow: 0 10px 30px rgba(255,61,87,.35), inset 0 0 0 1px #ffffff26;
+  border:1px solid #ffffff22;
+}
+.sub{ opacity:.85; margin-top:6px; width:100% }
+
+.panel{
+  background: linear-gradient(180deg, var(--card), var(--card-2));
+  border:1px solid #ffffff14; box-shadow: 0 10px 40px rgba(0,0,0,.35), inset 0 0 0 1px #ffffff0f;
+  border-radius:18px; padding:18px;
+}
+
+.grid{ display:grid; gap:14px; grid-template-columns: repeat(12,1fr); }
+.col-12{grid-column: span 12}
+.col-6{grid-column: span 6}
+.col-4{grid-column: span 4}
+@media (max-width: 820px){ .col-6{grid-column: span 12} .col-4{grid-column: span 12} }
+
+label{ display:block; font-weight:600; margin-bottom:8px }
+input[type="number"], input[type="text"], textarea, button, .btn{
+  width:100%; padding:12px var(--in-ph); border-radius:12px; border:1px solid #ffffff22;
+  background:#0c1a30; color:var(--text);
+  outline:none; transition:.2s border-color, .2s transform, .2s box-shadow;
+  box-shadow: inset 0 0 0 1px #00000020;
+  font-size: var(--in-fs);
+  line-height: var(--in-lh);
+}
+input[type="text"]::placeholder{color:#9db5d5}
+input[type="number"]:focus, input[type="text"]:focus, textarea:focus{
+  border-color:#7bd3ff; box-shadow: 0 0 0 4px #7bd3ff22;
+}
+
+/* одинаковые параметры для полей имён */
+.names input[type="text"]{
+  padding: var(--in-pv) var(--in-ph);
+  height: var(--in-height);
+}
+
+/* ряд кнопок */
+.row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end }
+.row > * { flex:1 1 240px }
+
+/* кнопки управления */
+.btn, button{
+  cursor:pointer; font-weight:800; letter-spacing:.2px; text-transform:uppercase; font-size:12px;
+  background: linear-gradient(90deg, #ff3d57, #ff7a8c);
+  border:none; box-shadow: 0 10px 30px rgba(255,61,87,.35), inset 0 0 0 1px #ffffff26;
+}
+.btn:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(.2) }
+.btn.alt{
+  background: linear-gradient(90deg, #2ee6a6, #88ffd7);
+  box-shadow: 0 10px 30px rgba(46,230,166,.28), inset 0 0 0 1px #ffffff26;
+}
+.btn.ghost{ background: transparent; border:1px dashed #ffffff40; box-shadow:none; text-transform:none; letter-spacing:0; font-size:14px; }
+.btn:hover{ transform: translateY(-2px) }
+
+/* сетка имён */
+.names{ display:grid; gap:10px; grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+@media (max-width:720px){ .names{ grid-template-columns: 1fr } }
+
+/* Плитка "+ Добавить участника" — те же размеры и шрифт, что у input */
+.add-tile{
+  display:flex; align-items:center; justify-content:flex-start;
+  width:100%;
+  height: var(--in-height);
+  padding: var(--in-pv) var(--in-ph);
+  border-radius:12px;
+  border:1px solid #ffffff22;
+  background:#0c1a30;
+  color:#9db5d5;
+  font: inherit;
+  font-size: var(--in-fs);
+  line-height: var(--in-lh);
+  font-weight:400;
+  letter-spacing:0; text-align:left;
+  cursor:pointer; text-transform:none;
+  box-shadow: inset 0 0 0 1px #00000020;
+}
+.add-tile:hover, .add-tile:focus, .add-tile:focus-visible{
+  border-color:#7bd3ff; box-shadow: 0 0 0 4px #7bd3ff22; color:var(--text);
+}
+
+/* --- НОВОЕ: делаем кнопку "Создать список" ТОЧНО такого же размера, как input #count --- */
+#count{
+  height: var(--in-height);
+  padding: var(--in-pv) var(--in-ph);
+}
+#makeInputs{
+  height: var(--in-height);                 /* такая же высота */
+  padding: 0 var(--in-ph);                  /* как у input по горизонтали */
+  font-size: var(--in-fs);                  /* такой же размер шрифта */
+  line-height: var(--in-lh);                /* одинаковая межстрочка */
+  text-transform:none;                      /* без апкейса для равенства высоты текста */
+  font-weight:600;
+
+  /* контраст для белого текста */
+  background: linear-gradient(90deg, #0b6a58, #0f8a67);
+  color:#ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  box-shadow: 0 10px 24px rgba(12,120,92,.35), inset 0 0 0 1px #ffffff26;
+  border:1px solid #0a7a5a88;
+}
+#makeInputs:hover{ filter: brightness(1.05); transform: translateY(-2px); }
+
+/* --- НОВОЕ: чтобы кнопка и инпут стояли на ОДНОЙ вертикали, даём кнопке "пустой" label как у инпута --- */
+.spacer-label{
+  visibility:hidden;
+  display:block;
+  margin-bottom:8px;          /* как у обычного label */
+  font-weight:600;            /* как у label */
+}
+
+.warn{ color:#ffd166; font-size:13px; margin-top:8px }
+
+.cards{ margin-top:16px; display:grid; gap:14px; grid-template-columns: repeat(3, minmax(240px, 1fr)); }
+@media (max-width:980px){ .cards{ grid-template-columns: repeat(2, minmax(220px,1fr)) } }
+@media (max-width:660px){ .cards{ grid-template-columns: 1fr } }
+
+.card{ perspective: 1000px; }
+.flip{ position:relative; width:100%; height:160px; transform-style:preserve-3d; transition: transform .7s cubic-bezier(.2,.8,.2,1); }
+.card.revealed .flip{ transform: rotateY(180deg) }
+
+.face{
+  position:absolute; inset:0; border-radius:16px; padding:14px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  backface-visibility: hidden; border:1px solid #ffffff14;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px #ffffff0f;
+}
+.front{ background: linear_gradient(180deg, #11223f, #0d1b34); }
+.back{ background: linear-gradient(180deg, #142a52, #102243); transform: rotateY(180deg); }
+.name{ font-size:18px; font-weight:800; text-align:center; }
+.hint{ font-size:12px; opacity:.85; text-align:center; }
+.receiver{ font-size:22px; font-weight:900; text-align:center; color:var(--gold); text-shadow: 0 6px 22px rgba(255,209,102,.25); }
+
+footer{ margin-top:24px; opacity:.75; text-align:center; font-size:13px }
+.tiny{ font-size:12px; opacity:.8 }
+
+.garland{ position:relative; height:30px; margin:14px 0 18px; display:flex; justify-content:center; gap:14px; filter:saturate(1.15); }
+.bulb{ width:10px; height:10px; border-radius:50%; box-shadow: 0 0 18px currentColor, 0 0 6px currentColor inset; animation: twinkle 2.6s infinite ease-in-out; }
+.bulb:nth-child(3n+1){ color:#ff3d57 }
+.bulb:nth-child(3n+2){ color:#2ee6a6; animation-delay:.6s }
+.bulb:nth-child(3n+3){ color:#7bd3ff; animation-delay:1.2s }
+@keyframes twinkle{ 0%,100%{ filter:brightness(1) } 50%{ filter:brightness(1.8) } }
+.divider{ height:1px; background: linear-gradient(90deg, transparent, #ffffff2a, transparent); margin:16px 0; }
+</style>
+</head>
+<body>
+
+<div class="snow" aria-hidden="true" id="snow"></div>
+
+<div class="wrap">
+  <header>
+    <div class="badge">ТАЙНЫЙ САНТА</div>
+    <div class="sub">Вводите имена, а каждый узнает своего получателя только для себя ✨</div>
+  </header>
+
+  <div class="panel">
+    <div class="garland" aria-hidden="true">
+      <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
+      <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
+      <div class="bulb"></div><div class="bulb"></div><div class="bulb"></div>
+    </div>
+
+    <div class="grid">
+      <div class="col-12">
+        <div class="row">
+          <div>
+            <label for="count">Сколько людей участвует?</label>
+            <input id="count" type="number" min="3" max="200" value="6" />
+          </div>
+
+          <!-- Пустой label создаёт такой же верхний отступ, как у поля слева -->
+          <div style="max-width:220px">
+            <label class="spacer-label">Сколько людей участвует?</label>
+            <button id="makeInputs" class="btn alt" title="Создать поля для имён">Создать список</button>
+          </div>
+        </div>
+        <div class="warn tiny" id="countHelp">Минимум 3 человека</div>
+      </div>
+
+      <div class="col-12 divider"></div>
+
+      <div class="col-12">
+        <label>Имена участников</label>
+        <div class="names" id="namesList" aria-live="polite"></div>
+        <div class="row" style="margin-top:12px">
+          <button id="fillExamples" class="btn ghost" type="button">Заполнить именами банды</button>
+          <button id="generate" class="btn" type="button">Сгенерировать жеребьёвку</button>
+          <button id="reset" class="btn ghost" type="button">Сбросить</button>
+        </div>
+        <div class="warn" id="namesWarn" hidden>Введите минимум 3 уникальных имени без пустых строк.</div>
+      </div>
+
+      <div class="col-12 divider"></div>
+
+      <div class="col-12">
+        <label><span class="highlight">Каждый открывает свою карточку</span></label>
+        <div id="results" class="cards" aria-live="polite"></div>
+        <div id="afterInfo" class="tiny" style="margin-top:8px" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    ООО Хуевшвие ⛄
+  </footer>
+</div>
+
+<script>
+  // --- Snow generator ---
+  (function snow(){
+    const root = document.getElementById('snow');
+    const FLAKES = 80;
+    for (let i=0;i<FLAKES;i++){
+      const f = document.createElement('div');
+      f.className = 'flake';
+      const size = 4 + Math.random()*6;
+      f.style.width = f.style.height = size + 'px';
+      f.style.left = Math.random()*100 + 'vw';
+      const dur = 8 + Math.random()*8;
+      f.style.animationDuration = dur + 's, ' + (3 + Math.random()*4) + 's';
+      f.style.animationDelay = (-Math.random()*dur) + 's, ' + (Math.random()*2) + 's';
+      f.style.opacity = 0.5 + Math.random()*0.5;
+      root.appendChild(f);
+    }
+  })();
+
+  const count = document.getElementById('count');
+  const makeInputs = document.getElementById('makeInputs');
+  const namesList = document.getElementById('namesList');
+  const namesWarn = document.getElementById('namesWarn');
+  const generateBtn = document.getElementById('generate');
+  const resetBtn = document.getElementById('reset');
+  const results = document.getElementById('results');
+  const afterInfo = document.getElementById('afterInfo');
+  const fillExamples = document.getElementById('fillExamples');
+
+  // создать одно поле имени и добавить в конец текущего списка
+  function addNameInput(value = ''){
+    const wrap = document.createElement('div');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Имя ' + (namesList.querySelectorAll('input').length + 1);
+    input.autocomplete = 'off';
+    input.inputMode = 'text';
+    input.value = value;
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function ensureAddTile(){
+    let tile = document.getElementById('addTile');
+    if (!tile){
+      tile = document.createElement('button');
+      tile.id = 'addTile';
+      tile.type = 'button';
+      tile.className = 'add-tile';
+      tile.textContent = 'Добавить участника';
+      tile.addEventListener('click', addOne);
+      tile.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); addOne(); }});
+    }
+    namesList.appendChild(tile);
+  }
+
+  function renderNameInputs(n){
+    namesList.innerHTML = '';
+    for (let i=0;i<n;i++) namesList.appendChild(addNameInput(''));
+    ensureAddTile();
+  }
+
+  function getCleanNames(){
+    const inputs = namesList.querySelectorAll('input[type="text"]');
+    const raw = Array.from(inputs).map(i => (i.value || '').trim()).filter(Boolean);
+    const seen = new Set();
+    const names = [];
+    for (const x of raw){
+      const key = x.toLocaleLowerCase();
+      if (!seen.has(key)){ names.push(x); seen.add(key); }
+    }
+    return names;
+  }
+
+  function derangement(items){
+    const n = items.length;
+    const idx = Array.from({length:n}, (_,i)=>i);
+    for (let i=n-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    for (let i=0;i<n;i++){
+      if (idx[i] === i){
+        const j = (i+1) % n;
+        [idx[i], idx[j]] = [idx[j], idx[i]];
+      }
+    }
+    for (let i=0;i<n;i++){
+      if (idx[i] === i) return derangement(items);
+    }
+    const pairs = new Map();
+    for (let i=0;i<n;i++){
+      pairs.set(items[i], items[idx[i]]);
+    }
+    return pairs;
+  }
+
+  function renderResults(pairs){
+    results.innerHTML = '';
+    afterInfo.hidden = false;
+
+    const entries = Array.from(pairs.entries());
+    for (let i=entries.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [entries[i], entries[j]] = [entries[j], entries[i]];
+    }
+
+    for (const [giver, receiver] of entries){
+      const card = document.createElement('div'); 
+      card.className = 'card';
+
+      const flip = document.createElement('div'); 
+      flip.className = 'flip';
+
+      const front = document.createElement('div'); 
+      front.className = 'face front';
+      front.innerHTML = `
+      <div class="name">🎅 ${escapeHTML(giver)}</div>
+      <div class="hint">Нажмите, чтобы узнать получателя</div>
+      <button class="btn ghost" type="button">Показать</button>
+    `;
+
+      const back = document.createElement('div'); 
+      back.className = 'face back';
+      back.innerHTML = `
+      <div class="hint tiny">Вы дарите подарок:</div>
+      <div class="receiver">🎁 ${escapeHTML(receiver)}</div>
+      <button class="btn ghost" type="button">Скрыть</button>
+    `;
+
+      const showBtn = front.querySelector('button');
+      const hideBtn = back.querySelector('button');
+
+      showBtn.addEventListener('click', ()=>{
+        if (card.dataset.locked === '1') return;
+        card.classList.add('revealed');
+      });
+
+      hideBtn.addEventListener('click', ()=>{
+        card.classList.remove('revealed');
+        card.dataset.locked = '1';
+        card.classList.add('locked');
+        front.innerHTML = `
+        <div class="name">🎅 ${escapeHTML(giver)}</div>
+        <div class="hint">Уже просмотрено 🔒</div>
+      `;
+      });
+
+      flip.appendChild(front);
+      flip.appendChild(back);
+      card.appendChild(flip);
+      results.appendChild(card);
+    }
+
+    results.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  function escapeHTML(str){
+    return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+  }
+
+  function addOne(){
+    const current = namesList.querySelectorAll('input[type="text"]').length;
+    if (current >= 200) {
+      namesWarn.textContent = 'Максимум 200 участников.';
+      namesWarn.hidden = false;
+      return;
+    }
+    const wrap = addNameInput('');
+    const tile = document.getElementById('addTile');
+    namesList.insertBefore(wrap, tile);
+    count.value = current + 1;
+    namesWarn.hidden = true;
+    results.innerHTML = '';
+    afterInfo.hidden = true;
+    const inp = wrap.querySelector('input');
+    inp.focus();
+    tile.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+
+  // Кнопки/действия
+  makeInputs.addEventListener('click', ()=>{
+    const n = Math.max(3, Math.min(200, parseInt(count.value||'0',10)));
+    count.value = n;
+    renderNameInputs(n);
+    namesWarn.hidden = true; results.innerHTML = ''; afterInfo.hidden = true;
+  });
+
+  fillExamples.addEventListener('click', ()=>{
+    const samples = ["Анна","Альбина","Валерия","Елена","Владислав","Арсений","Владимир"];
+    renderNameInputs(samples.length);
+    count.value = samples.length;
+    const inputs = namesList.querySelectorAll('input[type="text"]');
+    inputs.forEach((inp, i) => { inp.value = samples[i]; });
+    results.innerHTML = '';
+    afterInfo.hidden = true;
+    namesWarn.hidden = true;
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    results.innerHTML = ''; afterInfo.hidden = true; namesWarn.hidden = true; namesList.innerHTML = ''; count.value = 6; renderNameInputs(parseInt(count.value,10));
+  });
+
+  generateBtn.addEventListener('click', ()=>{
+    const names = getCleanNames();
+    if (names.length < 3){
+      namesWarn.textContent = 'Введите минимум 3 уникальных имени без пустых строк.';
+      namesWarn.hidden = false; return;
+    }
+    namesWarn.hidden = true;
+    const pairs = derangement(names);
+    renderResults(pairs);
+  });
+
+  // init
+  renderNameInputs(parseInt(count.value,10));
+</script>
+</body>
+</html>
