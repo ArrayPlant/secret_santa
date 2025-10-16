@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Тайный Санта</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" href="https://cdn1.iconfinder.com/data/icons/santa-emojis/60/007_-_santa_christmas_emoji_sad_upset-1024.png">
+  <link rel="shortcut icon" href="https://cdn1.iconfinder.com/data/icons/santa-emojis/60/007_-_santa_christmas_emoji_sad_upset-1024.png">
+
+  <link rel="icon" type="image/png" href="https://cdn1.iconfinder.com/data/icons/santa-emojis/60/007_-_santa_christmas_emoji_sad_upset-1024.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://cdn1.iconfinder.com/data/icons/santa-emojis/60/007_-_santa_christmas_emoji_sad_upset-1024.png">
+
 </head>
 <body>
 
@@ -13,7 +19,6 @@
 <div class="wrap">
   <header>
     <div class="badge">ТАЙНЫЙ САНТА</div>
-    <!-- h1 удалён по просьбе пользователя -->
     <div class="sub">Вводите имена, раздавайте пары, а каждый узнает своего получателя только для себя ⭐</div>
   </header>
 
@@ -45,7 +50,6 @@
         <div class="names" id="namesList" aria-live="polite"></div>
         <div class="row" style="margin-top:12px">
           <button id="fillExamples" class="btn ghost" type="button">Заполнить именами банды</button>
-          <!-- Убрали отдельную кнопку добавления, теперь она как элемент списка -->
           <button id="generate" class="btn" type="button">Сгенерировать жеребьёвку</button>
           <button id="reset" class="btn ghost" type="button">Сбросить</button>
         </div>
@@ -69,20 +73,17 @@
 </div>
 
 <script>
-  // --- Snow generator (мобильная оптимизация) ---
   (function snow(){
     const root = document.getElementById('snow');
 
-    // Подбираем количество снежинок под устройство и экран
     const isSmall = window.matchMedia('(max-width: 720px)').matches;
     const cores = navigator.hardwareConcurrency || 4;
     const mem = navigator.deviceMemory || 4;
-    const perfCoef = Math.min(cores/4, mem/4); // ~1 на средних устройствах
+    const perfCoef = Math.min(cores/4, mem/4); 
 
-    const BASE = isSmall ? 24 : 60; // было 80
+    const BASE = isSmall ? 24 : 60; 
     const FLAKES = Math.max(10, Math.round(BASE * perfCoef));
 
-    // Чанкуем создание, чтобы не блокировать main thread
     let created = 0;
     const batch = 8;
     function spawnBatch(){
@@ -93,7 +94,7 @@
         const size = 4 + Math.random()*6;
         f.style.width = f.style.height = size + 'px';
         f.style.left = Math.random()*100 + 'vw';
-        const dur = 10 + Math.random()*10; // немного медленнее
+        const dur = 10 + Math.random()*10;
         f.style.animationDuration = dur + 's, ' + (3 + Math.random()*4) + 's';
         f.style.animationDelay = (-Math.random()*dur) + 's, ' + (Math.random()*2) + 's';
         f.style.opacity = 0.45 + Math.random()*0.45;
@@ -117,7 +118,6 @@
   const afterInfo = document.getElementById('afterInfo');
   const fillExamples = document.getElementById('fillExamples');
 
-  // создать одно поле имени и добавить в конец текущего списка
   function addNameInput(value = ''){
     const wrap = document.createElement('div');
     const input = document.createElement('input');
@@ -190,13 +190,11 @@
     afterInfo.hidden = false;
 
     const entries = Array.from(pairs.entries());
-    // рандомизация порядка — Fisher–Yates
     for (let i=entries.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [entries[i], entries[j]] = [entries[j], entries[i]];
     }
 
-    // Фрагмент для минимизации перерисовок
     const frag = document.createDocumentFragment();
 
     for (const [giver, receiver] of entries){
@@ -273,7 +271,6 @@
     tile.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }
 
-  // Кнопки/действия
   makeInputs.addEventListener('click', ()=>{
     const n = Math.max(3, Math.min(200, parseInt(count.value||'0',10)));
     count.value = n;
@@ -307,7 +304,6 @@
     renderResults(pairs);
   }, {passive:true});
 
-  // init
   renderNameInputs(parseInt(count.value,10));
 </script>
 </body>
